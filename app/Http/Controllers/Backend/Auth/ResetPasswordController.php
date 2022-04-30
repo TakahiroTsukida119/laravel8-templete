@@ -3,26 +3,36 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Backend\Auth;
 
+use App\Exceptions\BadRequestException;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Backend\Auth\AdminResetRequest;
+use App\Http\Requests\Frontend\Auth\ResetRequest;
 use App\Models\Admin;
+use App\OpenApi\RequestBodies\Backend\Auth\AdminResetPasswordRequestBody;
+use App\OpenApi\Responses\Backend\Auth\LoginAdminResponse;
+use App\OpenApi\Responses\Exceptions\BadRequestResponse;
+use App\OpenApi\Responses\Exceptions\TooManyRequestsResponse;
+use App\OpenApi\Responses\Exceptions\ValidationErrorResponse;
+use App\OpenApi\Responses\Frontend\Auth\LoginUserResponse;
 use App\Providers\RouteServiceProvider;
-use App\Repositories\Admin\AdminAuthRepositoryContract;
-use Illuminate\Contracts\Auth\Guard;
-use Illuminate\Contracts\Auth\PasswordBroker;
-use Illuminate\Contracts\Auth\StatefulGuard;
-use Illuminate\Contracts\Foundation\Application;
-use Illuminate\Contracts\View\Factory;
+use App\Services\Backend\Auth\AdminAuthService;
+use App\ViewModels\Backend\Auth\AdminLoginViewModel;
+use App\ViewModels\Frontend\Auth\AccessTokenViewModel;
+use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Foundation\Auth\ResetsPasswords;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Routing\Redirector;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Password;
-use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
-use JetBrains\PhpStorm\ArrayShape;
+use Vyuldashev\LaravelOpenApi\Attributes as OpenApi;
 
+/**
+ * Class ResetPasswordController
+ * @package App\Http\Controllers\Backend\Auth
+ */
+#[OpenApi\PathItem]
 class ResetPasswordController extends Controller
 {
     /*
@@ -39,6 +49,15 @@ class ResetPasswordController extends Controller
     use ResetsPasswords;
 
     /**
+     * Where to redirect users after resetting their password.
+     *
+     * @var string
+     */
+    protected string $redirectTo = RouteServiceProvider::HOME;
+
+    private ?string $token = null;
+
+    /**
      * Display the password reset view for the given token.
      *
      * If no token is present, display the link request form.
@@ -47,89 +66,79 @@ class ResetPasswordController extends Controller
      * @param string|null $token
      * @return View
      */
-    public function showResetForm(Request $request, ?string $token = null): View
+    public function showResetForm(Request $request, string|null $token = null): View
     {
-        return view('backend.auth.passwords.reset')->with([
-            'token' => $token,
-            'email' => $request->email
-        ]);
+        return view('frontend.auth.passwords.reset')->with(
+            ['token' => $token, 'email' => $request->email]
+        );
+    }
+
+    /**
+     * パスワードリセット
+     *
+     * ユーザーのパスワードを再設定します。
+     * パスワードリセットメールに添付のURLのクエリパラメーター`email`と`token`を使用してください。
+     *
+     * @param AdminResetRequest $request
+     * @param AdminAuthService $authService
+     * @return JsonResponse
+     * @throws BadRequestException
+     */
+    #[OpenApi\Operation('AdminResetPassword', ['admin_auth'], null, 'POST')]
+    #[OpenApi\RequestBody(AdminResetPasswordRequestBody::class)]
+    #[OpenApi\Response(LoginAdminResponse::class, 200)]
+    #[OpenApi\Response(BadRequestResponse::class, 400)]
+    #[OpenApi\Response(ValidationErrorResponse::class, 422)]
+    #[OpenApi\Response(TooManyRequestsResponse::class, 429)]
+    public function reset(AdminResetRequest $request, AdminAuthService $authService): JsonResponse
+    {
+
+        $broker = Password::broker('admins');
+
+        $response = $broker->reset($request->getCredential(), function (Admin $admin) use ($request) {
+            $this->token = $this->resetPassword($admin, $request->getPassword());
+        });
+
+        if ($response === Password::INVALID_USER) {
+            throw new BadRequestException(
+                BadRequestException::CODE_INVALID_EMAIL,
+                __('exception.invalid_email')
+            );
+        }
+
+        if ($response === Password::INVALID_TOKEN) {
+            throw new BadRequestException(
+                BadRequestException::CODE_INVALID_TOKEN,
+                __('exception.invalid_token')
+            );
+        }
+        return response()
+            ->json(new AdminLoginViewModel((string)$this->token));
     }
 
     /**
      * @inheritDoc
      */
-    #[ArrayShape(['token' => "string", 'email' => "string", 'password' => "string[]"])]
-    protected function rules(): array
-    {
-        return [
-            'token'    => 'required',
-            'email'    => 'required|email',
-            'password' => ['required', 'confirmed', 'min:8', 'max:32'],
-        ];
-    }
-
-    /**
-     * @inheritDoc
-     */
-    public function broker(): PasswordBroker
-    {
-        return Password::broker('admins');
-    }
-
-    /**
-     * @inheritDoc
-     */
-    protected function guard(): Guard|StatefulGuard
+    protected function guard()
     {
         return Auth::guard('admin');
     }
 
     /**
-     * @inheritDoc
+     * @param Admin $admin
+     * @param string $password
+     * @return string
      */
-    public function redirectPath(): string
+    protected function resetPassword(Admin $admin, string $password)
     {
-        return route('backend.home');
-    }
+        $this->setUserPassword($admin, $password);
 
-    /**
-     * @inheritDoc
-     */
-    protected function sendResetResponse(
-        Request $request,
-        $response
-    ): JsonResponse|Redirector|RedirectResponse|Application
-    {
-        if ($request->wantsJson()) {
-            return new JsonResponse(['message' => trans($response)], 200);
-        }
+        $admin->setRememberToken(Str::random(60));
 
-        return redirect($this->redirectPath())
-            ->with('alert_success', trans($response));
-    }
+        $admin->save();
 
-    /**
-     * @inheritDoc
-     */
-    public function reset(
-        Request $request,
-        AdminAuthRepositoryContract $adminAuth
-    ): JsonResponse|Redirector|RedirectResponse|Application
-    {
-        $request->validate($this->rules(), $this->validationErrorMessages());
+        event(new PasswordReset($admin));
 
-        // Here we will attempt to reset the user's password. If it is successful we
-        // will update the password on an actual user model and persist it to the
-        // database. Otherwise we will parse the error and return the response.
-        $response = $this->broker()->reset($this->credentials($request), function (Admin $admin, $password) {
-            $this->resetPassword($admin, $password);
-        });
-
-        // If the password was successfully reset, we will redirect the user back to
-        // the application's home authenticated view. If there is an error we can
-        // redirect them back to where they came from with their error message.
-        return $response === Password::PASSWORD_RESET
-            ? $this->sendResetResponse($request, $response)
-            : $this->sendResetFailedResponse($request, $response);
+        return $this->guard()->login($admin);
     }
 }

@@ -19,18 +19,24 @@ ps:
 	docker ps
 
 shell:
-	docker exec -it manage-app /bin/bash
+	docker exec -it laravel8-template-app /bin/bash
 
 work:
-	docker exec -it manage-app su -s /bin/bash $(shell id -un)
+	docker exec -it laravel8-template-app su -s /bin/bash $(shell id -un)
 
 mysql:
-	docker exec -it manage-mysql bash -c 'mysql -u user -ppassword'
+	docker exec -it laravel8-template-mysql bash -c 'mysql -u user -ppassword'
 
 models:
 	php artisan -N ide-helper:models
+
+fresh:
+	php artisan migrate:fresh --seed
 
 ide-helper:
 	php artisan ide-helper:generate
 	php artisan ide-helper:models --nowrite
 	php artisan ide-helper:meta
+
+api-generate:
+	php artisan openapi:generate > ./dist/openapi.json

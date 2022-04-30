@@ -1,0 +1,1062 @@
+{
+    "openapi": "3.0.2",
+    "info": {
+        "title": "Laravel",
+        "version": "1.0.0"
+    },
+    "servers": [
+        {
+            "url": "http:\/\/api.localhost",
+            "description": "ローカルサーバー"
+        },
+        {
+            "url": "http:\/\/localhost:8000",
+            "description": "モックサーバー"
+        }
+    ],
+    "paths": {
+        "\/v1\/auth\/login": {
+            "post": {
+                "tags": [
+                    "user_auth"
+                ],
+                "summary": "ユーザーログイン",
+                "description": "ユーザーのログインです。\nアクセストークンの有効期限は60分です。",
+                "operationId": "LoginUser",
+                "requestBody": {
+                    "description": "ログインパラメーター",
+                    "content": {
+                        "application\/json": {
+                            "schema": {
+                                "$ref": "#\/components\/schemas\/LoginUserParameter"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application\/json": {
+                                "schema": {
+                                    "$ref": "#\/components\/schemas\/LoginUserTokenData"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application\/json": {
+                                "schema": {
+                                    "$ref": "#\/components\/schemas\/UnauthorizedException"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "content": {
+                            "application\/json": {
+                                "schema": {
+                                    "$ref": "#\/components\/schemas\/TooManyRequestsException"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "\/v1\/auth\/refresh": {
+            "post": {
+                "tags": [
+                    "user_auth"
+                ],
+                "summary": "アクセストークンの再発行",
+                "description": "アクセストークンの有効期限が切れた場合はこちらでアクセストークンの再発行を行ってください",
+                "operationId": "RefreshUserAccessToken",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application\/json": {
+                                "schema": {
+                                    "$ref": "#\/components\/schemas\/LoginUserTokenData"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application\/json": {
+                                "schema": {
+                                    "$ref": "#\/components\/schemas\/UnauthorizedException"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerToken": []
+                    }
+                ]
+            }
+        },
+        "\/v1\/auth\/forgot": {
+            "post": {
+                "tags": [
+                    "user_auth"
+                ],
+                "summary": "パスワードリセットメールの送信",
+                "description": "パスワード再設定のメールを送信します。\n送信メールのURLのクエリパラメーターとして`email`と`token`を付与します。\nパスワードリセットのときはこの`email`と`token`を利用してください。",
+                "operationId": "ForgotPassword",
+                "requestBody": {
+                    "description": "パスワードリセットメールの送信",
+                    "content": {
+                        "application\/json": {
+                            "schema": {
+                                "$ref": "#\/components\/schemas\/ForgotPasswordParams"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application\/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "content": {
+                            "application\/json": {
+                                "schema": {
+                                    "$ref": "#\/components\/schemas\/BadRequestException"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "content": {
+                            "application\/json": {
+                                "schema": {
+                                    "title": "ValidationErrorResponse",
+                                    "type": "object",
+                                    "required": [
+                                        "errors"
+                                    ],
+                                    "properties": {
+                                        "errors": {
+                                            "title": "ValidationErrors",
+                                            "type": "object",
+                                            "required": [
+                                                "keys",
+                                                "values"
+                                            ],
+                                            "properties": {
+                                                "keys": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "description": "エラーの対象リクエストキー名",
+                                                        "type": "string",
+                                                        "example": "email"
+                                                    },
+                                                    "example": [
+                                                        "name",
+                                                        "email"
+                                                    ]
+                                                },
+                                                "values": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "description": "エラーの内容",
+                                                        "type": "string",
+                                                        "example": "メールアドレスは必須です"
+                                                    },
+                                                    "example": [
+                                                        "名前は255文字以内です",
+                                                        "メールアドレスは必須です"
+                                                    ]
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "content": {
+                            "application\/json": {
+                                "schema": {
+                                    "$ref": "#\/components\/schemas\/TooManyRequestsException"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "\/v1\/auth\/reset": {
+            "post": {
+                "tags": [
+                    "user_auth"
+                ],
+                "summary": "パスワードリセット",
+                "description": "ユーザーのパスワードを再設定します。\nパスワードリセットメールに添付のURLのクエリパラメーター`email`と`token`を使用してください。",
+                "operationId": "ResetPassword",
+                "requestBody": {
+                    "description": "パスワードリセット",
+                    "content": {
+                        "application\/json": {
+                            "schema": {
+                                "$ref": "#\/components\/schemas\/ResetPasswordParameter"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application\/json": {
+                                "schema": {
+                                    "$ref": "#\/components\/schemas\/LoginUserTokenData"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "content": {
+                            "application\/json": {
+                                "schema": {
+                                    "$ref": "#\/components\/schemas\/BadRequestException"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "content": {
+                            "application\/json": {
+                                "schema": {
+                                    "title": "ValidationErrorResponse",
+                                    "type": "object",
+                                    "required": [
+                                        "errors"
+                                    ],
+                                    "properties": {
+                                        "errors": {
+                                            "title": "ValidationErrors",
+                                            "type": "object",
+                                            "required": [
+                                                "keys",
+                                                "values"
+                                            ],
+                                            "properties": {
+                                                "keys": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "description": "エラーの対象リクエストキー名",
+                                                        "type": "string",
+                                                        "example": "email"
+                                                    },
+                                                    "example": [
+                                                        "name",
+                                                        "email"
+                                                    ]
+                                                },
+                                                "values": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "description": "エラーの内容",
+                                                        "type": "string",
+                                                        "example": "メールアドレスは必須です"
+                                                    },
+                                                    "example": [
+                                                        "名前は255文字以内です",
+                                                        "メールアドレスは必須です"
+                                                    ]
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "content": {
+                            "application\/json": {
+                                "schema": {
+                                    "$ref": "#\/components\/schemas\/TooManyRequestsException"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "\/v1\/auth\/logout": {
+            "post": {
+                "tags": [
+                    "user_auth"
+                ],
+                "summary": "ログアウト",
+                "description": "ユーザーのアクセストークンを失効させます。\nセキュリティ向上のために必ず利用してください。",
+                "operationId": "LogoutUser",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application\/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application\/json": {
+                                "schema": {
+                                    "$ref": "#\/components\/schemas\/UnauthorizedException"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerToken": []
+                    }
+                ]
+            }
+        },
+        "\/v1\/admins\/auth\/login": {
+            "post": {
+                "tags": [
+                    "admin_auth"
+                ],
+                "summary": "ユーザーログイン",
+                "description": "ユーザーのログインです。\nアクセストークンの有効期限は60分です。",
+                "operationId": "LoginAdmin",
+                "requestBody": {
+                    "description": "管理ユーザーログインパラメーター",
+                    "content": {
+                        "application\/json": {
+                            "schema": {
+                                "$ref": "#\/components\/schemas\/LoginAdminParams"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application\/json": {
+                                "schema": {
+                                    "$ref": "#\/components\/schemas\/LoginAdminTokenData"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application\/json": {
+                                "schema": {
+                                    "$ref": "#\/components\/schemas\/UnauthorizedException"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "content": {
+                            "application\/json": {
+                                "schema": {
+                                    "$ref": "#\/components\/schemas\/TooManyRequestsException"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "\/v1\/admins\/auth\/refresh": {
+            "post": {
+                "tags": [
+                    "admin_auth"
+                ],
+                "summary": "アクセストークンの再発行",
+                "description": "アクセストークンの有効期限が切れた場合はこちらでアクセストークンの再発行を行ってください",
+                "operationId": "RefreshAdminAccessToken",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application\/json": {
+                                "schema": {
+                                    "$ref": "#\/components\/schemas\/LoginAdminTokenData"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application\/json": {
+                                "schema": {
+                                    "$ref": "#\/components\/schemas\/UnauthorizedException"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerToken": []
+                    }
+                ]
+            }
+        },
+        "\/v1\/admins\/auth\/forgot": {
+            "post": {
+                "tags": [
+                    "admin_auth"
+                ],
+                "summary": "パスワードリセットメールの送信",
+                "description": "パスワード再設定のメールを送信します。\n送信メールのURLのクエリパラメーターとして`email`と`token`を付与します。\nパスワードリセットのときはこの`email`と`token`を利用してください。",
+                "operationId": "AdminForgotPassword",
+                "requestBody": {
+                    "description": "管理ユーザーパスワードリセットメールの送信",
+                    "content": {
+                        "application\/json": {
+                            "schema": {
+                                "$ref": "#\/components\/schemas\/AdminForgotPasswordParams"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application\/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "content": {
+                            "application\/json": {
+                                "schema": {
+                                    "$ref": "#\/components\/schemas\/BadRequestException"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "content": {
+                            "application\/json": {
+                                "schema": {
+                                    "title": "ValidationErrorResponse",
+                                    "type": "object",
+                                    "required": [
+                                        "errors"
+                                    ],
+                                    "properties": {
+                                        "errors": {
+                                            "title": "ValidationErrors",
+                                            "type": "object",
+                                            "required": [
+                                                "keys",
+                                                "values"
+                                            ],
+                                            "properties": {
+                                                "keys": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "description": "エラーの対象リクエストキー名",
+                                                        "type": "string",
+                                                        "example": "email"
+                                                    },
+                                                    "example": [
+                                                        "name",
+                                                        "email"
+                                                    ]
+                                                },
+                                                "values": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "description": "エラーの内容",
+                                                        "type": "string",
+                                                        "example": "メールアドレスは必須です"
+                                                    },
+                                                    "example": [
+                                                        "名前は255文字以内です",
+                                                        "メールアドレスは必須です"
+                                                    ]
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "content": {
+                            "application\/json": {
+                                "schema": {
+                                    "$ref": "#\/components\/schemas\/TooManyRequestsException"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "\/v1\/admins\/auth\/reset": {
+            "post": {
+                "tags": [
+                    "admin_auth"
+                ],
+                "summary": "パスワードリセット",
+                "description": "ユーザーのパスワードを再設定します。\nパスワードリセットメールに添付のURLのクエリパラメーター`email`と`token`を使用してください。",
+                "operationId": "AdminResetPassword",
+                "requestBody": {
+                    "description": "管理ユーザーパスワードリセット",
+                    "content": {
+                        "application\/json": {
+                            "schema": {
+                                "$ref": "#\/components\/schemas\/AdminResetPasswordParams"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application\/json": {
+                                "schema": {
+                                    "$ref": "#\/components\/schemas\/LoginAdminTokenData"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "content": {
+                            "application\/json": {
+                                "schema": {
+                                    "$ref": "#\/components\/schemas\/BadRequestException"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "content": {
+                            "application\/json": {
+                                "schema": {
+                                    "title": "ValidationErrorResponse",
+                                    "type": "object",
+                                    "required": [
+                                        "errors"
+                                    ],
+                                    "properties": {
+                                        "errors": {
+                                            "title": "ValidationErrors",
+                                            "type": "object",
+                                            "required": [
+                                                "keys",
+                                                "values"
+                                            ],
+                                            "properties": {
+                                                "keys": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "description": "エラーの対象リクエストキー名",
+                                                        "type": "string",
+                                                        "example": "email"
+                                                    },
+                                                    "example": [
+                                                        "name",
+                                                        "email"
+                                                    ]
+                                                },
+                                                "values": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "description": "エラーの内容",
+                                                        "type": "string",
+                                                        "example": "メールアドレスは必須です"
+                                                    },
+                                                    "example": [
+                                                        "名前は255文字以内です",
+                                                        "メールアドレスは必須です"
+                                                    ]
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "content": {
+                            "application\/json": {
+                                "schema": {
+                                    "$ref": "#\/components\/schemas\/TooManyRequestsException"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "\/v1\/admins\/auth\/logout": {
+            "post": {
+                "tags": [
+                    "admin_auth"
+                ],
+                "summary": "ログアウト",
+                "description": "ユーザーのアクセストークンを失効させます。\nセキュリティ向上のために必ず利用してください。",
+                "operationId": "LogoutAdmin",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application\/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application\/json": {
+                                "schema": {
+                                    "$ref": "#\/components\/schemas\/UnauthorizedException"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerToken": []
+                    }
+                ]
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "AdminForgotPasswordParams": {
+                "type": "object",
+                "required": [
+                    "email"
+                ],
+                "properties": {
+                    "email": {
+                        "description": "メールアドレス",
+                        "type": "string",
+                        "example": "admin1@example.com"
+                    }
+                }
+            },
+            "AdminResetPasswordParams": {
+                "type": "object",
+                "required": [
+                    "token",
+                    "email",
+                    "password",
+                    "password_confirmation"
+                ],
+                "properties": {
+                    "token": {
+                        "description": "認証用一時トークン",
+                        "type": "string",
+                        "example": "52354fbd129c529a379656dd8b77661af835aaaf9ed11def9c1c70f6e0821601"
+                    },
+                    "email": {
+                        "description": "メールアドレス",
+                        "type": "string",
+                        "example": "admin1@example.com"
+                    },
+                    "password": {
+                        "description": "パスワード",
+                        "type": "string",
+                        "example": "password"
+                    },
+                    "password_confirmation": {
+                        "description": "パスワード確認用",
+                        "type": "string",
+                        "example": "password"
+                    }
+                }
+            },
+            "LoginAdminParams": {
+                "type": "object",
+                "required": [
+                    "email",
+                    "password"
+                ],
+                "properties": {
+                    "email": {
+                        "description": "メールアドレス",
+                        "type": "string",
+                        "example": "admin1@example.com"
+                    },
+                    "password": {
+                        "description": "パスワード",
+                        "type": "string",
+                        "example": "password"
+                    }
+                }
+            },
+            "LoginAdminTokenData": {
+                "description": "アクセストークンのデータ",
+                "type": "object",
+                "required": [
+                    "access_token",
+                    "token_type",
+                    "expires_in"
+                ],
+                "properties": {
+                    "access_token": {
+                        "description": "アクセストークン",
+                        "type": "string",
+                        "example": "eyJ0eXAiOiJKV1QiLCJhbGciOiJFUzI1NiJ9.eyJpc3MiOiJodHRwOlwvXC9hcGkubG9jYWxob3N0XC92MVwvYXV0aFwvbG9naW4iLCJpYXQiOjE2MjkyNTkyNDksImV4cCI6MTY0OTk5NTI0OSwibmJmIjoxNjI5MjU5MjQ5LCJqdGkiOiJjS1l5aWhWMzVKNUpHMkhlIiwic3ViIjoiOTQyY2IxZTItOTk2My00NzM0LWJkYjEtYjhjNTQxOThhMmEyIiwicHJ2IjoiMjNiZDVjODk0OWY2MDBhZGIzOWU3MDFjNDAwODcyZGI3YTU5NzZmNyIsImVtYWlsIjoidXNlcjVAZXhhbXBsZS5jb20ifQ.vWjxHvL_pJ54bTtB61dA3ZpOwzuiD1MA0m2IfTL9nNVXXjtIQBeq75bu7yNLd_vV1UZxQg-jocfW5yZdY1jVcQ"
+                    },
+                    "token_type": {
+                        "description": "トークンタイプ",
+                        "type": "string",
+                        "example": "Bearer"
+                    },
+                    "expires_in": {
+                        "description": "有効期限（単位：秒数）",
+                        "type": "integer",
+                        "example": 3600
+                    }
+                },
+                "readOnly": true
+            },
+            "BadRequestException": {
+                "type": "object",
+                "required": [
+                    "message",
+                    "code"
+                ],
+                "properties": {
+                    "message": {
+                        "description": "エラーメッセージ",
+                        "type": "string",
+                        "nullable": true,
+                        "example": "不正なリクエストです"
+                    },
+                    "code": {
+                        "description": "エラーコード",
+                        "type": "string",
+                        "example": "invalid_token"
+                    }
+                }
+            },
+            "ForbiddenException": {
+                "type": "object",
+                "required": [
+                    "message",
+                    "code"
+                ],
+                "properties": {
+                    "message": {
+                        "description": "エラー内容のメッセージ",
+                        "type": "string",
+                        "example": "権限がありません"
+                    },
+                    "code": {
+                        "description": "エラーコード",
+                        "type": "string",
+                        "example": "forbidden"
+                    }
+                }
+            },
+            "NotFoundException": {
+                "type": "object",
+                "required": [
+                    "message",
+                    "code"
+                ],
+                "properties": {
+                    "message": {
+                        "description": "エラー内容のメッセージ",
+                        "type": "string",
+                        "example": "ページが見つかりません"
+                    },
+                    "code": {
+                        "description": "エラーコード",
+                        "type": "string",
+                        "example": "notfound"
+                    }
+                }
+            },
+            "TooManyRequestsException": {
+                "type": "object",
+                "required": [
+                    "message",
+                    "code",
+                    "lockout"
+                ],
+                "properties": {
+                    "message": {
+                        "description": "エラーメッセージ",
+                        "type": "string",
+                        "nullable": true,
+                        "example": "リクエストがレートを超過しました"
+                    },
+                    "code": {
+                        "description": "エラーコード",
+                        "type": "string",
+                        "example": "too_many_requests"
+                    },
+                    "lockout": {
+                        "type": "object",
+                        "required": [
+                            "seconds",
+                            "minutes"
+                        ],
+                        "properties": {
+                            "seconds": {
+                                "description": "秒数",
+                                "type": "integer",
+                                "example": 30
+                            },
+                            "minutes": {
+                                "description": "分数",
+                                "type": "integer",
+                                "example": 4
+                            }
+                        }
+                    }
+                }
+            },
+            "UnauthorizedException": {
+                "type": "object",
+                "required": [
+                    "message",
+                    "code"
+                ],
+                "properties": {
+                    "message": {
+                        "description": "エラー内容のメッセージ",
+                        "type": "string",
+                        "example": "メールアドレスまたはパスワードが違います"
+                    },
+                    "code": {
+                        "description": "エラーコード",
+                        "type": "string",
+                        "example": "authentication_failed"
+                    }
+                }
+            },
+            "ForgotPasswordParams": {
+                "type": "object",
+                "required": [
+                    "email"
+                ],
+                "properties": {
+                    "email": {
+                        "description": "メールアドレス",
+                        "type": "string",
+                        "example": "user1@example.com"
+                    }
+                }
+            },
+            "LoginUserParameter": {
+                "type": "object",
+                "required": [
+                    "email",
+                    "password"
+                ],
+                "properties": {
+                    "email": {
+                        "description": "メールアドレス",
+                        "type": "string",
+                        "example": "user1@example.com"
+                    },
+                    "password": {
+                        "description": "パスワード",
+                        "type": "string",
+                        "example": "password"
+                    }
+                }
+            },
+            "LoginUserTokenData": {
+                "description": "アクセストークンのデータ",
+                "type": "object",
+                "required": [
+                    "access_token",
+                    "token_type",
+                    "expires_in"
+                ],
+                "properties": {
+                    "access_token": {
+                        "description": "アクセストークン",
+                        "type": "string",
+                        "example": "eyJ0eXAiOiJKV1QiLCJhbGciOiJFUzI1NiJ9.eyJpc3MiOiJodHRwOlwvXC9hcGkubG9jYWxob3N0XC92MVwvYXV0aFwvbG9naW4iLCJpYXQiOjE2MjkyNTkyNDksImV4cCI6MTY0OTk5NTI0OSwibmJmIjoxNjI5MjU5MjQ5LCJqdGkiOiJjS1l5aWhWMzVKNUpHMkhlIiwic3ViIjoiOTQyY2IxZTItOTk2My00NzM0LWJkYjEtYjhjNTQxOThhMmEyIiwicHJ2IjoiMjNiZDVjODk0OWY2MDBhZGIzOWU3MDFjNDAwODcyZGI3YTU5NzZmNyIsImVtYWlsIjoidXNlcjVAZXhhbXBsZS5jb20ifQ.vWjxHvL_pJ54bTtB61dA3ZpOwzuiD1MA0m2IfTL9nNVXXjtIQBeq75bu7yNLd_vV1UZxQg-jocfW5yZdY1jVcQ"
+                    },
+                    "token_type": {
+                        "description": "トークンタイプ",
+                        "type": "string",
+                        "example": "Bearer"
+                    },
+                    "expires_in": {
+                        "description": "有効期限（単位：秒数）",
+                        "type": "integer",
+                        "example": 3600
+                    }
+                },
+                "readOnly": true
+            },
+            "ResetPasswordParameter": {
+                "type": "object",
+                "required": [
+                    "token",
+                    "email",
+                    "password",
+                    "password_confirmation"
+                ],
+                "properties": {
+                    "token": {
+                        "description": "認証用一時トークン",
+                        "type": "string",
+                        "example": "52354fbd129c529a379656dd8b77661af835aaaf9ed11def9c1c70f6e0821601"
+                    },
+                    "email": {
+                        "description": "メールアドレス",
+                        "type": "string",
+                        "example": "user1@example.com"
+                    },
+                    "password": {
+                        "description": "パスワード",
+                        "type": "string",
+                        "example": "password"
+                    },
+                    "password_confirmation": {
+                        "description": "パスワード確認用",
+                        "type": "string",
+                        "example": "password"
+                    }
+                }
+            },
+            "Paginate": {
+                "type": "object",
+                "required": [
+                    "current_page",
+                    "total_page",
+                    "total_count"
+                ],
+                "properties": {
+                    "current_page": {
+                        "description": "現在のページ数",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "total_page": {
+                        "description": "総のページ数",
+                        "type": "integer",
+                        "example": 5
+                    },
+                    "total_count": {
+                        "description": "総件数",
+                        "type": "integer",
+                        "example": 95
+                    }
+                }
+            },
+            "StoreUserParams": {
+                "description": "ユーザー登録リクエストパラメーター",
+                "type": "object",
+                "required": [
+                    "name",
+                    "email"
+                ],
+                "properties": {
+                    "name": {
+                        "description": "氏名",
+                        "type": "string",
+                        "example": "鈴木一郎"
+                    },
+                    "email": {
+                        "description": "メールアドレス",
+                        "type": "string",
+                        "example": "user1@example.com"
+                    }
+                }
+            },
+            "UpdateUserParams": {
+                "description": "ユーザー更新リクエストパラメーター",
+                "type": "object",
+                "required": [
+                    "name",
+                    "email"
+                ],
+                "properties": {
+                    "name": {
+                        "description": "氏名",
+                        "type": "string",
+                        "example": "鈴木一郎"
+                    },
+                    "email": {
+                        "description": "メールアドレス",
+                        "type": "string",
+                        "example": "user1@example.com"
+                    }
+                }
+            }
+        },
+        "securitySchemes": {
+            "BearerToken": {
+                "type": "http",
+                "scheme": "bearer",
+                "bearerFormat": "JWT"
+            }
+        }
+    },
+    "tags": [
+        {
+            "name": "user_auth",
+            "description": "ユーザー認証"
+        },
+        {
+            "name": "admin_auth",
+            "description": "管理ユーザー認証"
+        }
+    ]
+}

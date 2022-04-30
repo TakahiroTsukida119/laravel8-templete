@@ -38,7 +38,8 @@ class RouteServiceProvider extends ServiceProvider
     {
         $this->configureRateLimiting();
         $this->routes(function () {
-            $this->mapApiRoutes();
+            $this->mapFrontendApiRoutes();
+            $this->mapBackendApiRoutes();
             $this->mapBackendRoutes();
             $this->mapFrontendRoutes();
         });
@@ -66,7 +67,7 @@ class RouteServiceProvider extends ServiceProvider
      */
     protected function mapBackendRoutes(): void
     {
-        Route::middleware('web')
+        Route::middleware('api')
             ->namespace($this->namespace)
             ->group(base_path('routes/Backend/backend.php'));
     }
@@ -78,11 +79,25 @@ class RouteServiceProvider extends ServiceProvider
      *
      * @return void
      */
-    protected function mapApiRoutes(): void
+    protected function mapFrontendApiRoutes(): void
     {
         Route::middleware('api')
             ->namespace($this->namespace)
             ->group(base_path('routes/Frontend/api.php'));
+    }
+
+    /**
+     * Define the "api" routes for the application.
+     *
+     * These routes are typically stateless.
+     *
+     * @return void
+     */
+    protected function mapBackendApiRoutes(): void
+    {
+        Route::middleware('api')
+            ->namespace($this->namespace)
+            ->group(base_path('routes/Backend/api.php'));
     }
 
     /**

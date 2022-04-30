@@ -1,30 +1,44 @@
 <?php
 declare(strict_types=1);
 
-namespace App\Services\Frontend\Auth;
+namespace App\Services\Backend\Auth;
 
 use App\Exceptions\InProgressApplyException;
+use App\Models\Admin;
 use App\Models\User;
 use App\Repositories\WaitingList\Params\ApplyCancelParams;
 use Carbon\CarbonImmutable;
 use Exception;
 use Illuminate\Auth\AuthenticationException;
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Support\Facades\Auth;
 use PHPOpenSourceSaver\JWTAuth\Contracts\Providers\JWT;
+use PHPOpenSourceSaver\JWTAuth\JWTGuard;
 
 /**
- * Class AuthServiceImpl
- * @package App\Services\Frontend\Auth
+ * Class AdminAuthServiceImpl
+ * @package App\Services\Backend\Auth
  */
-class AuthServiceImpl implements AuthService
+class AdminAuthServiceImpl implements AdminAuthService
 {
+    private Guard|JWTGuard $auth;
+
+    /**
+     * AdminAuthServiceImpl constructor.
+     */
+    public function __construct()
+    {
+        $this->auth = Auth::guard('admin');
+    }
+
     /**
      * @inheritDoc
      */
-    public function getAuthUser(): User
+    public function getAuthUser(): Admin
     {
         $userOrNull = $this->getAuthUserOrNull();
         if (!isset($userOrNull)) {
-            throw new AuthenticationException(__('exception.'));
+            throw new AuthenticationException(__('exception.unauthenticated'));
         }
         return $userOrNull;
     }
@@ -32,12 +46,12 @@ class AuthServiceImpl implements AuthService
     /**
      * @inheritDoc
      */
-    public function getAuthUserOrNull(): ?User
+    public function getAuthUserOrNull(): ?Admin
     {
         /**
-         * @var User|null $userOrNull
+         * @var Admin|null $userOrNull
          */
-        $userOrNull = auth('api')->user();
+        $userOrNull = $this->auth->user();
         return $userOrNull;
     }
 
@@ -46,7 +60,7 @@ class AuthServiceImpl implements AuthService
      */
     public function logout(): void
     {
-        auth('api')->logout();
+        $this->auth->logout();
     }
 
     /**
@@ -54,7 +68,7 @@ class AuthServiceImpl implements AuthService
      */
     public function refresh(): string
     {
-        return auth('api')->refresh();
+        return $this->auth->refresh();
     }
 
     /**
@@ -62,7 +76,7 @@ class AuthServiceImpl implements AuthService
      */
     public function invalidate(): JWT
     {
-        return auth('api')->invalidate();
+        return $this->auth->invalidate();
     }
 
     /**

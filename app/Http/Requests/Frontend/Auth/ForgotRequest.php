@@ -7,7 +7,7 @@ use Illuminate\Foundation\Http\FormRequest;
 use JetBrains\PhpStorm\ArrayShape;
 
 /**
- * Class ForgotRequest
+ * Class AdminForgotRequest
  * @package App\Http\Requests\Frontend\Auth
  */
 class ForgotRequest extends FormRequest

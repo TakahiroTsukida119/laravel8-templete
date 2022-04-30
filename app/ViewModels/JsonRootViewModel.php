@@ -21,7 +21,6 @@ class JsonRootViewModel extends Base\ViewModel
     }
 
     /**
-     * 'data' => [...] で包みます
      * @param array|ViewModel $data
      * @return JsonRootViewModel
      */
@@ -34,11 +33,10 @@ class JsonRootViewModel extends Base\ViewModel
     /**
      * @inheritDoc
      */
-    #[ArrayShape(['data' => "\App\ViewModels\Base\ViewModel|array"])]
     public function toMap(): array
     {
-        return [
-            'data' => $this->data,
-        ];
+        return $this->data instanceof ViewModel
+            ? $this->data->toArray()
+            : $this->data;
     }
 }

@@ -7,8 +7,15 @@ use App\Exceptions\BadRequestException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Frontend\Auth\ResetRequest;
 use App\Models\User;
+use App\OpenApi\RequestBodies\Frontend\Auth\ResetPasswordRequestBody;
+use App\OpenApi\Responses\Exceptions\BadRequestResponse;
+use App\OpenApi\Responses\Exceptions\TooManyRequestsResponse;
+use App\OpenApi\Responses\Exceptions\ValidationErrorResponse;
+use App\OpenApi\Responses\Frontend\Auth\LoginUserResponse;
 use App\Providers\RouteServiceProvider;
+use App\Services\Frontend\Auth\UserAuthService;
 use App\ViewModels\Frontend\Auth\AccessTokenViewModel;
+use Illuminate\Auth\AuthenticationException;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Foundation\Auth\ResetsPasswords;
 use Illuminate\Http\JsonResponse;
@@ -17,11 +24,13 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
+use Vyuldashev\LaravelOpenApi\Attributes as OpenApi;
 
 /**
  * Class ResetPasswordController
  * @package App\Http\Controllers\Frontend\Auth
  */
+#[OpenApi\PathItem]
 class ResetPasswordController extends Controller
 {
     /*
@@ -65,10 +74,19 @@ class ResetPasswordController extends Controller
     /**
      * パスワードリセット
      *
+     * ユーザーのパスワードを再設定します。
+     * パスワードリセットメールに添付のURLのクエリパラメーター`email`と`token`を使用してください。
+     *
      * @param ResetRequest $request
      * @return JsonResponse
      * @throws BadRequestException
      */
+    #[OpenApi\Operation('ResetPassword', ['user_auth'], null, 'POST')]
+    #[OpenApi\RequestBody(ResetPasswordRequestBody::class)]
+    #[OpenApi\Response(LoginUserResponse::class, 200)]
+    #[OpenApi\Response(BadRequestResponse::class, 400)]
+    #[OpenApi\Response(ValidationErrorResponse::class, 422)]
+    #[OpenApi\Response(TooManyRequestsResponse::class, 429)]
     public function reset(ResetRequest $request): JsonResponse
     {
 
@@ -91,9 +109,8 @@ class ResetPasswordController extends Controller
                 __('exception.invalid_token')
             );
         }
-
         return response()
-            ->json(new AccessTokenViewModel($this->token));
+            ->json(new AccessTokenViewModel((string)$this->token));
     }
 
     /**
@@ -101,7 +118,7 @@ class ResetPasswordController extends Controller
      */
     protected function guard()
     {
-        return Auth::guard('api');
+        return Auth::guard('user');
     }
 
     /**
@@ -109,7 +126,7 @@ class ResetPasswordController extends Controller
      * @param string $password
      * @return string
      */
-    protected function resetPassword(User $user, string $password): string
+    protected function resetPassword(User $user, string $password)
     {
         $this->setUserPassword($user, $password);
 

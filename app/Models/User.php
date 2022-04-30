@@ -3,8 +3,9 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Notifications\ResetUserPassword;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use JetBrains\PhpStorm\ArrayShape;
@@ -18,9 +19,11 @@ use PHPOpenSourceSaver\JWTAuth\Contracts\JWTSubject;
  */
 class User extends Authenticatable implements JWTSubject
 {
-    use HasApiTokens, HasFactory, Notifiable;
+    use HasApiTokens, HasFactory, Notifiable, SoftDeletes;
 
     protected $table = 'users';
+
+    public $incrementing = false;
 
     /**
      * The attributes that are mass assignable.
@@ -30,6 +33,7 @@ class User extends Authenticatable implements JWTSubject
     protected $guarded = [
         'created_at',
         'updated_at',
+        'deleted_at',
     ];
 
     /**
@@ -49,6 +53,9 @@ class User extends Authenticatable implements JWTSubject
      */
     protected $casts = [
         'email_verified_at' => 'datetime',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+        'deleted_at' => 'datetime',
     ];
 
     /**
@@ -68,5 +75,15 @@ class User extends Authenticatable implements JWTSubject
         return [
             'email' => $this->email,
         ];
+    }
+
+    /**
+     * パスワードリセットメール
+     * @param $token
+     * @return void
+     */
+    public function sendPasswordResetNotification($token): void
+    {
+        $this->notify(new ResetUserPassword($token));
     }
 }

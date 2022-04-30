@@ -4,8 +4,10 @@ namespace App\Providers;
 
 use App\Repositories\Admin\AdminRepository;
 use App\Repositories\Admin\AdminRepositoryImpl;
-use App\Services\Frontend\Auth\AuthService;
-use App\Services\Frontend\Auth\AuthServiceImpl;
+use App\Services\Backend\Auth\AdminAuthService;
+use App\Services\Backend\Auth\AdminAuthServiceImpl;
+use App\Services\Frontend\Auth\UserAuthService;
+use App\Services\Frontend\Auth\UserAuthServiceImpl;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Pagination\Paginator;
@@ -22,9 +24,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public array $singletons = [
         // Services/Frontend
-        AuthService::class => AuthServiceImpl::class,
+        UserAuthService::class => UserAuthServiceImpl::class,
 
         // Services/Backend
+        AdminAuthService::class => AdminAuthServiceImpl::class,
 
         // Repositories
         AdminRepository::class => AdminRepositoryImpl::class,

@@ -3,129 +3,104 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Backend\Auth;
 
+use App\Exceptions\TooManyRequestsException;
 use App\Http\Controllers\Controller;
-use App\Providers\RouteServiceProvider;
-use Illuminate\Contracts\Foundation\Application;
-use Illuminate\Contracts\Routing\ResponseFactory;
-use Illuminate\Foundation\Auth\AuthenticatesUsers;
+use App\Http\Requests\Frontend\Auth\LoginRequest;
+use App\OpenApi\RequestBodies\Backend\Auth\LoginAdminRequestBody;
+use App\OpenApi\Responses\Backend\Auth\LoginAdminResponse;
+use App\OpenApi\Responses\Exceptions\TooManyRequestsResponse;
+use App\OpenApi\Responses\Exceptions\UnauthorizedResponse;
+use App\ViewModels\Backend\Auth\AdminLoginViewModel;
+use Illuminate\Auth\AuthenticationException;
+use Illuminate\Auth\Events\Login;
+use Illuminate\Foundation\Auth\ThrottlesLogins;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
-use Illuminate\Routing\Redirector;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Validator;
-use Illuminate\Validation\ValidationException;
-use Illuminate\View\View;
+use Illuminate\Support\Str;
+use Vyuldashev\LaravelOpenApi\Attributes as OpenApi;
 
 /**
  * Class LoginController
  * @package App\Http\Controllers\Backend\Auth
  */
+#[OpenApi\PathItem]
 class LoginController extends Controller
 {
-    /*
-    |--------------------------------------------------------------------------
-    | Login Controller
-    |--------------------------------------------------------------------------
-    |
-    | This controller handles authenticating users for the application and
-    | redirecting them to your home screen. The controller uses a trait
-    | to conveniently provide its functionality to your applications.
-    |
-    */
+    use ThrottlesLogins;
 
-    use AuthenticatesUsers;
 
     /**
-     * Where to redirect users after login.
+     * ユーザーログイン
      *
-     * @var string
-     */
-    protected string $redirectTo = RouteServiceProvider::HOME;
-
-    /**
-     * ログインフォーム
-     *
-     * @return View
-     */
-    public function showLoginForm(): View
-    {
-        return view('backend.auth.login');
-    }
-
-    /**
-     * ログイン
+     * ユーザーのログインです。
+     * アクセストークンの有効期限は60分です。
      *
      * @param Request $request
-     * @return JsonResponse|Response|RedirectResponse
-     * @throws ValidationException
+     * @return JsonResponse
+     * @throws AuthenticationException
+     * @throws TooManyRequestsException
      */
-    public function login(Request $request): JsonResponse|Response|RedirectResponse
+    #[OpenApi\Operation('LoginAdmin', ['admin_auth'], null, 'POST')]
+    #[OpenApi\RequestBody(LoginAdminRequestBody::class)]
+    #[OpenApi\Response(LoginAdminResponse::class, 200)]
+    #[OpenApi\Response(UnauthorizedResponse::class, 401)]
+    #[OpenApi\Response(TooManyRequestsResponse::class, 429)]
+    public function login(Request $request): JsonResponse
     {
-        $validator = Validator::make($request->only(['email', 'password']), [
-            $this->username() => 'required|string',
-            'password' => 'required|string',
-        ]);
+        /** @var LoginRequest $request */
+        $request = LoginRequest::createFrom($request);
 
-        if ($validator->fails()) {
-            $this->loginFailed();
+        if (!$request->isValid()) {
+            throw new AuthenticationException(__('exception.login_failed'));
         }
 
-        // If the class is using the ThrottlesLogins trait, we can automatically throttle
-        // the login attempts for this application. We'll key this by the username and
-        // the IP address of the client making these requests into this application.
-        if (method_exists($this, 'hasTooManyLoginAttempts') &&
-            $this->hasTooManyLoginAttempts($request)) {
+        if ($this->hasTooManyLoginAttempts($request)) {
             $this->fireLockoutEvent($request);
             $this->sendLockoutResponse($request);
         }
 
-        $isValid = Auth::guard('admin')->attempt(
-            $request->only(['email', 'password']),
-            $request->filled('remember')
-        );
-
-        // If the login attempt was unsuccessful we will increment the number of attempts
-        // to login and redirect the user back to the login form. Of course, when this
-        // user surpasses their maximum number of attempts they will get locked out.
-        if (!$isValid) {
+        $token = Auth::guard('admin')->attempt($request->only(['email', 'password']));
+        event(new Login('admin', auth('admin')->user(), true));
+        if (empty($token)) {
             $this->incrementLoginAttempts($request);
-            $this->loginFailed();
+            throw new AuthenticationException(__('exception.login_failed'));
         }
-
-        return redirect()
-            ->route('backend.home')
-            ->with('alert_success', __('message.success.login'));
+        return response()
+            ->json(new AdminLoginViewModel((string)$token));
     }
 
     /**
-     * ログアウト
+     * Redirect the user after determining they are locked out.
      *
      * @param Request $request
-     * @return Response|Redirector|Application|RedirectResponse|ResponseFactory
+     * @return void
+     * @throws TooManyRequestsException
      */
-    public function logout(Request $request): Response|Redirector|RedirectResponse|Application|ResponseFactory
+    protected function sendLockoutResponse(Request $request): void
     {
-        Auth::guard('admin')->logout();
+        $seconds = $this->limiter()->availableIn($this->throttleKey($request));
 
-        $request->session()->invalidate();
-
-        $request->session()->regenerateToken();
-
-        return $request->wantsJson()
-            ? response('', 204)
-            : redirect(route('backend.login'));
+        throw new TooManyRequestsException(
+            (int)ceil($seconds / 60),
+            $seconds,
+            __('auth.throttle'),
+        );
     }
 
     /**
-     * ログイン失敗の例外をスローします
-     * @throws ValidationException
+     * @inheritDoc
      */
-    private function loginFailed(): void
+    protected function throttleKey(Request $request): string
     {
-        throw ValidationException::withMessages([
-            'password' => __('validation.login_password')
-        ]);
+        return Str::lower($request->input('email')) . '|' . $request->ip();
+    }
+
+    /**
+     * @return int
+     */
+    public function decayMinutes(): int
+    {
+        return config('auth.login_decay_minutes');
     }
 }

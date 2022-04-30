@@ -1,118 +1,127 @@
 version: "3.9"
 
 services:
-  nginx:
-    build: ".docker/nginx"
-    container_name: manage-nginx
-    ports:
-      - "80:80"
-    volumes:
-      - ./public:/app/public
-      - ./.docker/nginx/nginx.conf:/etc/nginx/nginx.conf
-    depends_on:
-      - app
+    nginx:
+        build: ".docker/nginx"
+        container_name: laravel8-template-nginx
+        ports:
+            - "80:80"
+        volumes:
+            - ./public:/app/public
+            - ./.docker/nginx/nginx.conf:/etc/nginx/nginx.conf
+        depends_on:
+            - app
 
-  app:
-    build: ".docker/php"
-    container_name: manage-app
-    working_dir: /app
-    volumes:
-      - ".:/app"
-      - "./.docker/php/php.ini:/usr/local/etc/php/conf.d/php.ini"
-    ports:
-      - "9000:9000"
-    environment:
-      - USER_NAME
-      - USER_ID
-      - GROUP_NAME
-      - GROUP_ID
-      - OS_NAME
-    depends_on:
-      - mysql
-      - redis
-      - minio
-      - mailcatcher
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+    app:
+        build: ".docker/php"
+        container_name: laravel8-template-app
+        working_dir: /app
+        volumes:
+            - ".:/app"
+            - "./.docker/php/php.ini:/usr/local/etc/php/conf.d/php.ini"
+        ports:
+            - "9000:9000"
+        environment:
+            - USER_NAME
+            - USER_ID
+            - GROUP_NAME
+            - GROUP_ID
+            - OS_NAME
+        depends_on:
+            - mysql
+            - redis
+            - minio
+            - mailcatcher
+        extra_hosts:
+            - "host.docker.internal:host-gateway"
 
-  queue_worker:
-    build: ".docker/php"
-    container_name: manage-queue-worker
-    working_dir: "/app"
-    command: "php artisan queue:listen --tries=3"
-    environment:
-      - USER_NAME
-      - USER_ID
-      - GROUP_NAME
-      - GROUP_ID
-      - OS_NAME
-    volumes:
-      - ".:/app"
-      - "./.docker/php/php.ini:/usr/local/etc/php/conf.d/php.ini"
-    depends_on:
-      - mysql
-      - redis
-      - minio
-      - mailcatcher
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-      - "auth.localhost:host-gateway"
+    queue_worker:
+        build: ".docker/php"
+        container_name: laravel8-template-queue-worker
+        working_dir: "/app"
+        command: "php artisan queue:listen --tries=3"
+        environment:
+            - USER_NAME
+            - USER_ID
+            - GROUP_NAME
+            - GROUP_ID
+            - OS_NAME
+        volumes:
+            - ".:/app"
+            - "./.docker/php/php.ini:/usr/local/etc/php/conf.d/php.ini"
+        depends_on:
+            - mysql
+            - redis
+            - minio
+            - mailcatcher
+        extra_hosts:
+            - "host.docker.internal:host-gateway"
+            - "auth.localhost:host-gateway"
 
-  mysql:
-    container_name: manage-mysql
-    build: ".docker/mysql"
-    ports:
-      - "3306:3306"
-    volumes:
-      - "./storage/mysql:/var/lib/mysql"
-    environment:
-      MYSQL_DATABASE: manage
-      MYSQL_USER: user
-      MYSQL_PASSWORD: password
-      MYSQL_ROOT_PASSWORD: password
+    mysql:
+        container_name: laravel8-template-mysql
+        build: ".docker/mysql"
+        ports:
+            - "3306:3306"
+        volumes:
+            - "./storage/mysql:/var/lib/mysql"
+        environment:
+            MYSQL_DATABASE: laravel
+            MYSQL_USER: user
+            MYSQL_PASSWORD: password
+            MYSQL_ROOT_PASSWORD: password
 
-  redis:
-    image: redis:6.2-buster
-    container_name: manage-redis
-    ports:
-      - "6379:6379"
+    redis:
+        image: redis:6.2-buster
+        container_name: laravel8-template-redis
+        ports:
+            - "6379:6379"
 
-  mailcatcher:
-    image: schickling/mailcatcher
-    container_name: manage-mailcatcher
-    ports:
-      - "1080:1080"
+    mailcatcher:
+        image: schickling/mailcatcher
+        container_name: laravel8-template-mailcatcher
+        ports:
+            - "1080:1080"
 
-  minio:
-    image: minio/minio
-    container_name: manage-minio
-    ports:
-      - "9001:9001"
-      - "9002:9002"
-    environment:
-      MINIO_ROOT_USER: access_key
-      MINIO_ROOT_PASSWORD: secret_key
-    entrypoint: bash
-    command: -c "/opt/bin/minio server /export --address :9001 --console-address :9002"
+    minio:
+        image: minio/minio
+        container_name: laravel8-template-minio
+        ports:
+            - "9001:9001"
+            - "9002:9002"
+        environment:
+            MINIO_ROOT_USER: access_key
+            MINIO_ROOT_PASSWORD: secret_key
+        entrypoint: bash
+        command: -c "/opt/bin/minio server /export --address :9001 --console-address :9002"
 
+    openapi:
+        container_name: laravel8-template-server-openapi
+        image: swaggerapi/swagger-ui:latest
+        tty: true
+        volumes:
+            - "./dist/:/var/openapi"
+        environment:
+            SWAGGER_JSON: /var/openapi/openapi.json
+        ports:
+            - "8080:8080"
 
-
-  create-bucket:
-    container_name: manage-create-bucket
-    image: minio/mc
-    entrypoint: [ "" ]
-    command:
-      - /bin/sh
-      - -c
-      - |
-        until (mc config host add minio http://minio:9001 access_key secret_key) do echo 'wait until add host' && sleep 1; done;
-        mc mb minio/public
-        mc policy set public minio/public
-        mc mb minio/private
-        mc policy set private minio/private
-        mc policy set private minio/private
-    environment:
-      MINIO_ROOT_USER: access_key
-      MINIO_ROOT_PASSWORD: secret_key
-    depends_on:
-      - minio
+    create-bucket:
+        container_name: laravel8-template-create-bucket
+        image: minio/mc
+        entrypoint: [ "" ]
+        command:
+            - /bin/sh
+            - -c
+            - |
+                until (mc config host add minio http://minio:9001 access_key secret_key) do echo 'wait until add host' && sleep 1; done;
+                mc mb minio/public
+                mc policy set public minio/public
+                mc mb minio/private
+                mc policy set private minio/private
+                mc policy set private minio/private
+        environment:
+            MINIO_ROOT_USER: access_key
+            MINIO_ROOT_PASSWORD: secret_key
+        depends_on:
+            - minio
