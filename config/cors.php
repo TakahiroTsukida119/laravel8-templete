@@ -21,7 +21,7 @@ return [
         '/v1/*',
     ],
 
-    'allowed_methods' => ['GET', 'POST'],
+    'allowed_methods' => ['GET', 'POST', 'PUT', 'DELETE'],
 
     'allowed_origins' => [],
 
@@ -29,6 +29,12 @@ return [
         config('app.env') !== 'local'
             ? "~\Ahttps?://{$domain}(/.*)?\z~"
             : "~\Ahttps?://{$domain}:3000(/.*)?\z~",
+        config('app.env') !== 'local'
+            ? "~\Ahttps?://{$domain}(/.*)?\z~"
+            : "~\Ahttps?://{$domain}:8080(/.*)?\z~",
+        config('app.env') !== 'local'
+            ? "~\Ahttps?://{$domain}(/.*)?\z~"
+            : "~\Ahttps?://{$domain}:8088(/.*)?\z~",
     ],
 
     'allowed_headers' => ['*'],

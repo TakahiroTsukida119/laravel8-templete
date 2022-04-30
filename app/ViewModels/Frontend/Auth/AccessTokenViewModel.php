@@ -7,7 +7,7 @@ use App\ViewModels\Base\ViewModel;
 use JetBrains\PhpStorm\ArrayShape;
 
 /**
- * Class AccessTokenViewModel アクセストークンのViewModel
+ * Class AdminLoginViewModel アクセストークンのViewModel
  * @package App\ViewModels\Frontend
  */
 class AccessTokenViewModel extends ViewModel
@@ -15,14 +15,13 @@ class AccessTokenViewModel extends ViewModel
     private string $token;
 
     /**
-     * AccessTokenViewModel constructor.
+     * AdminLoginViewModel constructor.
      * @param string $token ログイン時に発行されるアクセストークン（jwt）
      */
     public function __construct(string $token)
     {
         $this->token = $token;
     }
-
 
     /**
      * @inheritDoc
@@ -33,7 +32,7 @@ class AccessTokenViewModel extends ViewModel
         return [
             'access_token' => $this->token,
             'token_type' => 'Bearer',
-            'expires_in' => auth('api')->factory()->getTTL() * 60
+            'expires_in' => auth('user')->factory()->getTTL() * 60
         ];
     }
 }

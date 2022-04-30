@@ -3,19 +3,24 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Backend\Auth;
 
+use App\Exceptions\BadRequestException;
+use App\Exceptions\TooManyRequestsException;
 use App\Http\Controllers\Controller;
-use Illuminate\Contracts\Auth\PasswordBroker;
-use Illuminate\Contracts\View\View;
-use Illuminate\Foundation\Auth\SendsPasswordResetEmails;
+use App\Http\Requests\Backend\Auth\AdminForgotRequest;
+use App\OpenApi\RequestBodies\Backend\Auth\AdminForgotPasswordRequestBody;
+use App\OpenApi\Responses\Exceptions\BadRequestResponse;
+use App\OpenApi\Responses\Exceptions\TooManyRequestsResponse;
+use App\OpenApi\Responses\Exceptions\ValidationErrorResponse;
+use App\OpenApi\Responses\DefaultPostSuccessResponse;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Password;
+use Vyuldashev\LaravelOpenApi\Attributes as OpenApi;
 
 /**
  * Class ForgotPasswordController
  * @package App\Http\Controllers\Backend\Auth
  */
+#[OpenApi\PathItem]
 class ForgotPasswordController extends Controller
 {
     /*
@@ -29,31 +34,48 @@ class ForgotPasswordController extends Controller
     |
     */
 
-    use SendsPasswordResetEmails;
-
     /**
-     * Display the form to request a password reset link.
+     * パスワードリセットメールの送信
+     *
+     * パスワード再設定のメールを送信します。
+     * 送信メールのURLのクエリパラメーターとして`email`と`token`を付与します。
+     * パスワードリセットのときはこの`email`と`token`を利用してください。
+     *
+     * @param AdminForgotRequest $request
+     * @return JsonResponse
+     * @throws BadRequestException
+     * @throws TooManyRequestsException
      */
-    public function showLinkRequestForm(): View
+    #[OpenApi\Operation('AdminForgotPassword', ['admin_auth'], null, 'POST')]
+    #[OpenApi\RequestBody(AdminForgotPasswordRequestBody::class)]
+    #[OpenApi\Response(DefaultPostSuccessResponse::class, 200)]
+    #[OpenApi\Response(BadRequestResponse::class, 400)]
+    #[OpenApi\Response(ValidationErrorResponse::class, 422)]
+    #[OpenApi\Response(TooManyRequestsResponse::class, 429)]
+    public function forgot(AdminForgotRequest $request): JsonResponse
     {
-        return view('backend.auth.passwords.email');
-    }
 
-    /**
-     * @inheritDoc
-     */
-    protected function sendResetLinkResponse(Request $request, $response): JsonResponse|RedirectResponse
-    {
-        return $request->wantsJson()
-            ? new JsonResponse(['message' => trans($response)], 200)
-            : back()->with('status', trans($response));
-    }
+        // We will send the password reset link to this user. Once we have attempted
+        // to send the link, we will examine the response then see the message we
+        // need to show to the user. Finally, we'll send out a proper response.
+        $broker = Password::broker('admins');
+        $response = $broker->sendResetLink(['email' => $request->getEmail()]);
 
-    /**
-     * @inheritDoc
-     */
-    public function broker(): PasswordBroker
-    {
-        return Password::broker('admins');
+        if ($response === Password::INVALID_USER) {
+            throw new BadRequestException(
+                BadRequestException::CODE_INVALID_EMAIL,
+                __('exception.invalid_email')
+            );
+        }
+
+        if ($response === Password::RESET_THROTTLED) {
+            throw new TooManyRequestsException(
+                config('auth.passwords.admins.throttle') / 60,
+                config('auth.passwords.admins.throttle'),
+                __('passwords.throttled')
+            );
+        }
+
+        return response()->json();
     }
 }

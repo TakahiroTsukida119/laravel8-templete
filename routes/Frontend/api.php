@@ -32,25 +32,25 @@ Route::domain('api.' . config('app.domain'))->group(function () {
         // 認証系API
         Route::prefix('auth')->group(function () {
             // ログイン
-            Route::post('/login', [LoginController::class, 'login'])->name('api.auth.login');
+            Route::post('/login', [LoginController::class, 'login'])->name('user.auth.login');
 
             Route::middleware('throttle:30,1')->group(function () {
                 // アクセストークンのリフレッシュ
-                Route::post('/refresh', [RefreshController::class, 'refresh'])->name('api.auth.refresh');
+                Route::post('/refresh', [RefreshController::class, 'refresh'])->name('user.auth.refresh');
                 //パスワードリセット
-                Route::post('/forgot', [ForgotPasswordController::class, 'forgot'])->name('api.auth.forgot');
-                Route::post('/reset', [ResetPasswordController::class, 'reset'])->name('api.auth.reset');
+                Route::post('/forgot', [ForgotPasswordController::class, 'forgot'])->name('user.auth.forgot');
+                Route::post('/reset', [ResetPasswordController::class, 'reset'])->name('user.auth.reset');
             });
 
-            Route::middleware('auth:api')->group(function () {
+            Route::middleware('auth:user')->group(function () {
                 // ログアウト
-                Route::post('/logout', [LogoutController::class, 'logout'])->name('api.auth.logout');
+                Route::post('/logout', [LogoutController::class, 'logout'])->name('user.auth.logout');
 
             });
         });
 
         // ログイン後
-        Route::middleware('auth:api')->group(function () {
+        Route::middleware('auth:user')->group(function () {
 
         });
     });

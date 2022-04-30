@@ -1,32 +1,32 @@
 <?php
 declare(strict_types=1);
 
-namespace App\Services\Frontend\Auth;
+namespace App\Services\Backend\Auth;
 
-use App\Models\User;
+use App\Models\Admin;
 use Exception;
 use Illuminate\Auth\AuthenticationException;
 use PHPOpenSourceSaver\JWTAuth\Contracts\Providers\JWT;
 
 
 /**
- * Interface AuthService
- * @package App\Services\Frontend\Auth
+ * Interface AdminAuthService
+ * @package App\Services\Backend\Auth
  */
-interface AuthService
+interface AdminAuthService
 {
     /**
      * 認証されているユーザー情報を取得します。認証状態でない場合はAuthenticateExceptionをthrowします
-     * @return User
+     * @return Admin
      * @throws AuthenticationException
      */
-    public function getAuthUser(): User;
+    public function getAuthUser(): Admin;
 
     /**
      * 認証されているユーザー情報を取得します。認証状態でない場合はnullを返します
-     * @return User|null
+     * @return Admin|null
      */
-    public function getAuthUserOrNull(): User|null;
+    public function getAuthUserOrNull(): Admin|null;
 
     /**
      * 認証ユーザーのログアウトを行います
