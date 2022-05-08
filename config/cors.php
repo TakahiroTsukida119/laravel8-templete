@@ -31,6 +31,9 @@ return [
             : "~\Ahttps?://{$domain}:3000(/.*)?\z~",
         config('app.env') !== 'local'
             ? "~\Ahttps?://{$domain}(/.*)?\z~"
+            : "~\Ahttps?://{$domain}:4000(/.*)?\z~",
+        config('app.env') !== 'local'
+            ? "~\Ahttps?://{$domain}(/.*)?\z~"
             : "~\Ahttps?://{$domain}:8080(/.*)?\z~",
         config('app.env') !== 'local'
             ? "~\Ahttps?://{$domain}(/.*)?\z~"
